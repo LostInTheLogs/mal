@@ -15,6 +15,9 @@ std::string pr_str(MalType* mal_type, bool readably) {
         }
         return {"\"" + ret_str + "\""};
     }
+    if (auto* keyword = dynamic_cast<MalKeyword*>(mal_type)) {
+        return {keyword->c_str()};
+    }
     if (auto* symbol = dynamic_cast<MalSymbol*>(mal_type)) {
         return {symbol->c_str()};
     }

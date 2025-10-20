@@ -45,6 +45,12 @@ class MalString : public MalType, public std::string {
         : std::string(std::move(content)) {}
 };
 
+class MalKeyword : public MalType, public std::string {
+  public:
+    explicit MalKeyword(std::string&& content)
+        : std::string(std::move(content)) {}
+};
+
 class MalInt : public MalType {
   public:
     explicit MalInt(int integer) : integer(integer) {};

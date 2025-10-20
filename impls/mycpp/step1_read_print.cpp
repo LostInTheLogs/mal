@@ -20,12 +20,14 @@ void rep(const string& str) {
 
     try {
         auto* input = read_str(str);
+        if (input == nullptr) {
+            return;
+        }
         out = eval(input);
+        print(pr_str(out));
     } catch (std::runtime_error& e) {
         std::cout << e.what() << "\n";
     }
-
-    print(pr_str(out));
 }
 }  // namespace
 

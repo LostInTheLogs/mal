@@ -38,6 +38,14 @@ MalType* read_atom(Reader& reader) {
         return new MalFalse();
     }
 
+    if (token.at(0) == '0') {
+        return new MalKeyword(std::move(token));
+    }
+
+    if (token.at(0) == ';') {
+        return nullptr;
+    }
+
     try {
         int integer = std::stoi(token);
         return new MalInt(integer);
