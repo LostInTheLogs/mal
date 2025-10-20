@@ -22,6 +22,8 @@ string Reader::next() {
     return ret;
 }
 
+namespace {
+
 MalType* read_atom(Reader& reader) {
     string token = reader.next();
 
@@ -35,19 +37,22 @@ MalType* read_atom(Reader& reader) {
     return new MalSymbol(std::move(token));
 }
 
-MalList* read_list(Reader& reader) {
+vector<MalType*> read_mal_types_between(Reader& reader, string start,
+                                        string end) {
     vector<MalType*> items;
-    reader.next();  // opening (
+    if (reader.peek() != start) {
+        throw std::runtime_error("this is not a list");
+    }
+    reader.next();  // `start`
 
     while (true) {
         try {
             string next_str = reader.peek();
-            if (next_str == ")") {
-                reader.next();  // closing )
-                return new MalList(std::move(items));
+            if (next_str == end) {
+                reader.next();  // 'end'
+                return items;
             }
         } catch (std::out_of_range&) {
-            fflush(stdout);
             for (auto* item : items) {
                 delete item;
             }
@@ -60,6 +65,23 @@ MalList* read_list(Reader& reader) {
     }
 }
 
+MalList* read_list(Reader& reader) {
+    auto items = read_mal_types_between(reader, "(", ")");
+    return new MalList(std::move(items));
+}
+
+MalVec* read_vector(Reader& reader) {
+    auto items = read_mal_types_between(reader, "[", "]");
+    return new MalVec(std::move(items));
+}
+
+MalHashMap* read_hashmap(Reader& reader) {
+    auto items = read_mal_types_between(reader, "{", "}");
+    return new MalHashMap(std::move(items));
+}
+
+}  // namespace
+
 MalType* read_form(Reader& reader) {
     string token;
     try {
@@ -71,6 +93,12 @@ MalType* read_form(Reader& reader) {
     switch (token[0]) {
         case '(':
             return read_list(reader);
+            break;
+        case '[':
+            return read_vector(reader);
+            break;
+        case '{':
+            return read_hashmap(reader);
             break;
         default:
             return read_atom(reader);

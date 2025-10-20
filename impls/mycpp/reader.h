@@ -22,8 +22,6 @@ class Reader {
     unsigned int position = 0;
 };
 
-MalList* read_list(Reader& reader);
-MalType* read_atom(Reader& reader);
 MalType* read_form(Reader& reader);
 std::vector<std::string> tokenize(const std::string& str);
 MalType* read_str(const std::string& str);

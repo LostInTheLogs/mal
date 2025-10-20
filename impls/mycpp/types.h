@@ -21,6 +21,18 @@ class MalList : public MalType, public std::vector<MalType*> {
         : std::vector<MalType*>(std::move(items)) {}
 };
 
+class MalVec : public MalType, public std::vector<MalType*> {
+  public:
+    explicit MalVec(std::vector<MalType*>&& items)
+        : std::vector<MalType*>(std::move(items)) {}
+};
+
+class MalHashMap : public MalType, public std::vector<MalType*> {
+  public:
+    explicit MalHashMap(std::vector<MalType*>&& items)
+        : std::vector<MalType*>(std::move(items)) {}
+};
+
 class MalSymbol : public MalType, public std::string {
   public:
     explicit MalSymbol(std::string&& content)
