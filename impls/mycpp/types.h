@@ -39,6 +39,12 @@ class MalSymbol : public MalType, public std::string {
         : std::string(std::move(content)) {}
 };
 
+class MalString : public MalType, public std::string {
+  public:
+    explicit MalString(std::string&& content)
+        : std::string(std::move(content)) {}
+};
+
 class MalInt : public MalType {
   public:
     explicit MalInt(int integer) : integer(integer) {};
@@ -50,3 +56,7 @@ class MalInt : public MalType {
   private:
     int integer;
 };
+
+class MalNil : public MalType {};
+class MalTrue : public MalType {};
+class MalFalse : public MalType {};

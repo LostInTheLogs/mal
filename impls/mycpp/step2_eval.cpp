@@ -11,10 +11,20 @@
 
 using std::string;
 
+using EvalEnv = std::map<string, std::function<MalType*(std::span<MalType*>)>>;
+
 namespace {
 
-MalType* eval(MalType* ast) {
-    std::map<string, std::function<MalType*(std::span<MalType*>)>> eval_env = {
+MalType* eval(MalType* ast, const EvalEnv& eval_env) {
+    return ast;
+}
+
+void print(const string& out) {
+    std::cout << out << '\n';
+}
+
+void rep(const string& str) {
+    EvalEnv eval_env = {
         {"+",
          [](std::span<MalType*> args) -> MalType* {
              if (args.size() != 2) {
@@ -52,19 +62,12 @@ MalType* eval(MalType* ast) {
              return new MalInt(a / b);
          }},
     };
-    return ast;
-}
 
-void print(const string& out) {
-    std::cout << out << '\n';
-}
-
-void rep(const string& str) {
     MalType* out = nullptr;
 
     try {
         auto* input = read_str(str);
-        out = eval(input);
+        out = eval(input, eval_env);
     } catch (std::runtime_error& e) {
         std::cout << e.what() << "\n";
     }

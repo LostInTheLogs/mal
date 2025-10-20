@@ -1,5 +1,6 @@
 #include "reader.h"
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <regex>
@@ -27,6 +28,16 @@ namespace {
 MalType* read_atom(Reader& reader) {
     string token = reader.next();
 
+    if (token == "nil") {
+        return new MalNil();
+    }
+    if (token == "true") {
+        return new MalTrue();
+    }
+    if (token == "false") {
+        return new MalFalse();
+    }
+
     try {
         int integer = std::stoi(token);
         return new MalInt(integer);
@@ -37,13 +48,12 @@ MalType* read_atom(Reader& reader) {
     return new MalSymbol(std::move(token));
 }
 
-vector<MalType*> read_mal_types_between(Reader& reader, string start,
-                                        string end) {
+vector<MalType*> read_sequence(Reader& reader, const string& start,
+                               const string& end) {
     vector<MalType*> items;
-    if (reader.peek() != start) {
+    if (reader.next() != start) {
         throw std::runtime_error("this is not a list");
     }
-    reader.next();  // `start`
 
     while (true) {
         try {
@@ -66,18 +76,47 @@ vector<MalType*> read_mal_types_between(Reader& reader, string start,
 }
 
 MalList* read_list(Reader& reader) {
-    auto items = read_mal_types_between(reader, "(", ")");
+    auto items = read_sequence(reader, "(", ")");
     return new MalList(std::move(items));
 }
 
 MalVec* read_vector(Reader& reader) {
-    auto items = read_mal_types_between(reader, "[", "]");
+    auto items = read_sequence(reader, "[", "]");
     return new MalVec(std::move(items));
 }
 
 MalHashMap* read_hashmap(Reader& reader) {
-    auto items = read_mal_types_between(reader, "{", "}");
+    auto items = read_sequence(reader, "{", "}");
     return new MalHashMap(std::move(items));
+}
+
+MalString* read_string(Reader& reader) {
+    auto str = reader.next();
+    if (str.length() < 2 or str[0] != '"' or str[str.length() - 1] != '"') {
+        throw std::runtime_error("unbalanced quotes");
+    }
+
+    string out;
+
+    bool escape = false;
+    for (size_t i = 1; i < str.length() - 1; i++) {
+        auto in_char = str[i];
+        if (escape) {
+            out += in_char;
+            escape = false;
+            continue;
+        }
+        if (in_char == '\\') {
+            escape = true;
+            continue;
+        }
+        out += in_char;
+    }
+    if (escape) {
+        throw std::runtime_error("incomplete escape / unbalanced quotes");
+    }
+
+    return new MalString(std::move(out));
 }
 
 }  // namespace
@@ -99,6 +138,9 @@ MalType* read_form(Reader& reader) {
             break;
         case '{':
             return read_hashmap(reader);
+            break;
+        case '"':
+            return read_string(reader);
             break;
         default:
             return read_atom(reader);

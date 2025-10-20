@@ -3,4 +3,4 @@
 
 #include "types.h"
 
-std::string pr_str(MalType* mal_type);
+std::string pr_str(MalType* mal_type, bool readably = true);
