@@ -29,7 +29,7 @@ shared_ptr<MalType> eval(shared_ptr<MalType> ast, const EvalEnv& eval_env) {
         (list != nullptr) and list->size() > 0) {
         std::vector<shared_ptr<MalType>> evaluated;
         for (const auto& el : *list) {
-            auto evalled = eval(el, eval_env);  // TODO: try catch
+            auto evalled = eval(el, eval_env);
             evaluated.push_back(evalled);
         }
 
@@ -46,7 +46,7 @@ shared_ptr<MalType> eval(shared_ptr<MalType> ast, const EvalEnv& eval_env) {
         (list != nullptr) and list->size() > 0) {
         std::vector<shared_ptr<MalType>> evaluated;
         for (const auto& el : *list) {
-            auto evalled = eval(el, eval_env);  // TODO: try catch
+            auto evalled = eval(el, eval_env);
             evaluated.push_back(evalled);
         }
 
@@ -57,7 +57,7 @@ shared_ptr<MalType> eval(shared_ptr<MalType> ast, const EvalEnv& eval_env) {
         (list != nullptr) and list->size() > 0) {
         std::vector<shared_ptr<MalType>> evaluated;
         for (const auto& el : *list) {
-            auto evalled = eval(el, eval_env);  // TODO: try catch
+            auto evalled = eval(el, eval_env);
             evaluated.push_back(evalled);
         }
 

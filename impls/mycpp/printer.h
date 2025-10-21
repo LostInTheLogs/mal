@@ -3,4 +3,5 @@
 
 #include "types.h"
 
-std::string pr_str(std::shared_ptr<MalType> mal_type, bool readably = true);
+std::string pr_str(const std::shared_ptr<MalType>& mal_type,
+                   bool readably = true);

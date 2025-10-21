@@ -24,7 +24,7 @@ string pr_seq(std::span<shared_ptr<MalType>> seq, bool readably, string start,
 }
 }  // namespace
 
-std::string pr_str(shared_ptr<MalType> mal_type, bool readably) {
+std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
     if (auto str = dynamic_pointer_cast<MalString>(mal_type)) {
         auto ret_str = std::string(str->c_str());
         if (readably) {
