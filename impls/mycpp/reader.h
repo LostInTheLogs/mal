@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,6 @@ class Reader {
     unsigned int position = 0;
 };
 
-MalType* read_form(Reader& reader);
+std::shared_ptr<MalType> read_form(Reader& reader);
 std::vector<std::string> tokenize(const std::string& str);
-MalType* read_str(const std::string& str);
+std::shared_ptr<MalType> read_str(const std::string& str);

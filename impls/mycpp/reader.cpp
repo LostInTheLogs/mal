@@ -3,13 +3,14 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <memory>
 #include <regex>
 #include <string>
 #include <vector>
 
 #include "types.h"
 
-using std::string, std::vector;
+using std::string, std::vector, std::shared_ptr, std::make_shared;
 
 Reader::Reader(const std::vector<std::string>& tokens) : tokens(tokens) {}
 
@@ -25,21 +26,21 @@ string Reader::next() {
 
 namespace {
 
-MalType* read_atom(Reader& reader) {
+shared_ptr<MalType> read_atom(Reader& reader) {
     string token = reader.next();
 
     if (token == "nil") {
-        return new MalNil();
+        return make_shared<MalNil>();
     }
     if (token == "true") {
-        return new MalTrue();
+        return make_shared<MalTrue>();
     }
     if (token == "false") {
-        return new MalFalse();
+        return make_shared<MalFalse>();
     }
 
-    if (token.at(0) == '0') {
-        return new MalKeyword(std::move(token));
+    if (token.at(0) == ':') {
+        return make_shared<MalKeyword>(std::move(token));
     }
 
     if (token.at(0) == ';') {
@@ -48,17 +49,17 @@ MalType* read_atom(Reader& reader) {
 
     try {
         int integer = std::stoi(token);
-        return new MalInt(integer);
+        return make_shared<MalInt>(integer);
 
     } catch (...) {
     }
 
-    return new MalSymbol(std::move(token));
+    return make_shared<MalSymbol>(std::move(token));
 }
 
-vector<MalType*> read_sequence(Reader& reader, const string& start,
-                               const string& end) {
-    vector<MalType*> items;
+vector<shared_ptr<MalType>> read_sequence(Reader& reader, const string& start,
+                                          const string& end) {
+    vector<shared_ptr<MalType>> items;
     if (reader.next() != start) {
         throw std::runtime_error("this is not a list");
     }
@@ -71,34 +72,31 @@ vector<MalType*> read_sequence(Reader& reader, const string& start,
                 return items;
             }
         } catch (std::out_of_range&) {
-            for (auto* item : items) {
-                delete item;
-            }
             throw std::runtime_error("unbalanced parenthesis");
         }
 
-        auto* form = read_form(reader);
+        auto form = read_form(reader);
         assert(form);
         items.push_back(form);
     }
 }
 
-MalList* read_list(Reader& reader) {
+shared_ptr<MalList> read_list(Reader& reader) {
     auto items = read_sequence(reader, "(", ")");
-    return new MalList(std::move(items));
+    return make_shared<MalList>(std::move(items));
 }
 
-MalVec* read_vector(Reader& reader) {
+shared_ptr<MalVec> read_vector(Reader& reader) {
     auto items = read_sequence(reader, "[", "]");
-    return new MalVec(std::move(items));
+    return make_shared<MalVec>(std::move(items));
 }
 
-MalHashMap* read_hashmap(Reader& reader) {
+shared_ptr<MalHashMap> read_hashmap(Reader& reader) {
     auto items = read_sequence(reader, "{", "}");
-    return new MalHashMap(std::move(items));
+    return make_shared<MalHashMap>(std::move(items));
 }
 
-MalString* read_string(Reader& reader) {
+shared_ptr<MalString> read_string(Reader& reader) {
     auto str = reader.next();
     if (str.length() < 2 or str[0] != '"' or str[str.length() - 1] != '"') {
         throw std::runtime_error("unbalanced quotes");
@@ -124,12 +122,12 @@ MalString* read_string(Reader& reader) {
         throw std::runtime_error("incomplete escape / unbalanced quotes");
     }
 
-    return new MalString(std::move(out));
+    return make_shared<MalString>(std::move(out));
 }
 
 }  // namespace
 
-MalType* read_form(Reader& reader) {
+shared_ptr<MalType> read_form(Reader& reader) {
     string token;
     try {
         token = reader.peek();
@@ -174,7 +172,7 @@ std::vector<string> tokenize(const string& str) {
     return tokens;
 }
 
-MalType* read_str(const string& str) {
+shared_ptr<MalType> read_str(const string& str) {
     auto tokens = tokenize(str);
     Reader reader{tokens};
 

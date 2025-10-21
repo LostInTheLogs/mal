@@ -1,5 +1,8 @@
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -15,22 +18,23 @@ class MalType {
   private:
 };
 
-class MalList : public MalType, public std::vector<MalType*> {
+class MalList : public MalType, public std::vector<std::shared_ptr<MalType>> {
   public:
-    explicit MalList(std::vector<MalType*>&& items)
-        : std::vector<MalType*>(std::move(items)) {}
+    explicit MalList(std::vector<std::shared_ptr<MalType>>&& items)
+        : std::vector<std::shared_ptr<MalType>>(std::move(items)) {}
 };
 
-class MalVec : public MalType, public std::vector<MalType*> {
+class MalVec : public MalType, public std::vector<std::shared_ptr<MalType>> {
   public:
-    explicit MalVec(std::vector<MalType*>&& items)
-        : std::vector<MalType*>(std::move(items)) {}
+    explicit MalVec(std::vector<std::shared_ptr<MalType>>&& items)
+        : std::vector<std::shared_ptr<MalType>>(std::move(items)) {}
 };
 
-class MalHashMap : public MalType, public std::vector<MalType*> {
+class MalHashMap : public MalType,
+                   public std::vector<std::shared_ptr<MalType>> {
   public:
-    explicit MalHashMap(std::vector<MalType*>&& items)
-        : std::vector<MalType*>(std::move(items)) {}
+    explicit MalHashMap(std::vector<std::shared_ptr<MalType>>&& items)
+        : std::vector<std::shared_ptr<MalType>>(std::move(items)) {}
 };
 
 class MalSymbol : public MalType, public std::string {
@@ -66,3 +70,12 @@ class MalInt : public MalType {
 class MalNil : public MalType {};
 class MalTrue : public MalType {};
 class MalFalse : public MalType {};
+
+using MalFuncArgs = std::span<std::shared_ptr<MalType>>;
+class MalFunc : public MalType,
+                public std::function<std::shared_ptr<MalType>(
+                    std::span<std::shared_ptr<MalType>>)> {
+  public:
+    using std::function<std::shared_ptr<MalType>(
+        std::span<std::shared_ptr<MalType>>)>::function;
+};

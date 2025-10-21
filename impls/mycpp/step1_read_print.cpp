@@ -3,11 +3,11 @@
 #include "printer.h"
 #include "reader.h"
 
-using std::string;
+using std::string, std::shared_ptr;
 
 namespace {
 
-MalType* eval(MalType* input) {
+shared_ptr<MalType> eval(shared_ptr<MalType> input) {
     return input;
 }
 
@@ -16,10 +16,10 @@ void print(const string& out) {
 }
 
 void rep(const string& str) {
-    MalType* out = nullptr;
+    shared_ptr<MalType> out = nullptr;
 
     try {
-        auto* input = read_str(str);
+        auto input = read_str(str);
         if (input == nullptr) {
             return;
         }
