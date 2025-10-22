@@ -111,6 +111,7 @@ void rep(const string& str) {
 
     try {
         auto input = read_str(str);
+        std::cout << pr_str(input) << "wow\n";
         out = eval(input, eval_env);
     } catch (std::runtime_error& e) {
         std::cout << e.what() << "\n";

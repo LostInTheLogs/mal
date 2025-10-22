@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <regex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -108,7 +109,15 @@ shared_ptr<MalString> read_string(Reader& reader) {
     for (size_t i = 1; i < str.length() - 1; i++) {
         auto in_char = str[i];
         if (escape) {
-            out += in_char;
+            if (in_char == 'n') {
+                out += '\n';
+            } else if (in_char == '\\') {
+                out += '\\';
+            } else if (in_char == '"') {
+                out += '"';
+            } else {
+                throw std::runtime_error("unknown escape sequence");
+            }
             escape = false;
             continue;
         }
@@ -125,6 +134,37 @@ shared_ptr<MalString> read_string(Reader& reader) {
     return make_shared<MalString>(std::move(out));
 }
 
+shared_ptr<MalList> read_quote(Reader& reader, const string& prefix,
+                               string symbol) {
+    auto quote = reader.next();
+    assert(quote == prefix);
+
+    auto element = read_form(reader);
+
+    vector<std::shared_ptr<MalType>> vec{
+        make_shared<MalSymbol>(std::move(symbol)),
+        element,
+    };
+
+    return make_shared<MalList>(std::move(vec));
+}
+
+shared_ptr<MalList> read_meta(Reader& reader) {
+    auto quote = reader.next();
+    assert(quote == "^");
+
+    auto meta = read_form(reader);
+    auto element = read_form(reader);
+
+    vector<std::shared_ptr<MalType>> vec{
+        make_shared<MalSymbol>("with-meta"),
+        element,
+        meta,
+    };
+
+    return make_shared<MalList>(std::move(vec));
+}
+
 }  // namespace
 
 shared_ptr<MalType> read_form(Reader& reader) {
@@ -138,19 +178,28 @@ shared_ptr<MalType> read_form(Reader& reader) {
     switch (token[0]) {
         case '(':
             return read_list(reader);
-            break;
         case '[':
             return read_vector(reader);
-            break;
         case '{':
             return read_hashmap(reader);
-            break;
         case '"':
             return read_string(reader);
-            break;
+        case '\'':
+            return read_quote(reader, "\'", "quote");
+        case '`':
+            return read_quote(reader, "`", "quasiquote");
+        case '@':
+            return read_quote(reader, "@", "deref");
+        case '~':
+            if (token == "~@") {
+                return read_quote(reader, "~@", "splice-unquote");
+            } else {
+                return read_quote(reader, "~", "unquote");
+            }
+        case '^':
+            return read_meta(reader);
         default:
             return read_atom(reader);
-            break;
     }
 }
 
