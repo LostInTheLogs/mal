@@ -4,29 +4,32 @@
 #include <stdexcept>
 #include <vector>
 
+#include "env.h"
 #include "printer.h"
 #include "reader.h"
 #include "types.h"
 
 using std::string, std::shared_ptr, std::dynamic_pointer_cast, std::make_shared;
 
-using EvalEnv = std::unordered_map<string, shared_ptr<MalType>>;
-
 namespace {
 
-shared_ptr<MalType> eval(shared_ptr<MalType> ast, const EvalEnv& eval_env) {
+shared_ptr<MalType> eval(shared_ptr<MalType> ast, EvalEnv& eval_env) {
     if (auto symbol = dynamic_pointer_cast<MalSymbol>(ast)) {
-        auto str_sym = dynamic_pointer_cast<string>(symbol);
-
-        if (!eval_env.contains(*str_sym)) {
-            throw std::runtime_error("unknown symbol");
-        }
-        auto ret = eval_env.at(*str_sym);
-        return ret;
+        return eval_env.get(*symbol);
     }
 
     if (auto list = dynamic_pointer_cast<MalList>(ast);
         (list != nullptr) and list->size() > 0) {
+        const auto& first_symbol =
+            *dynamic_pointer_cast<MalSymbol>(list->at(0));
+
+        if (first_symbol == "def!") {
+            auto key = *dynamic_pointer_cast<MalSymbol>(list->at(1));
+            auto val = eval(list->at(2), eval_env);
+            eval_env.set(key, val);
+            return val;
+        }
+
         std::vector<shared_ptr<MalType>> evaluated;
         for (const auto& el : *list) {
             auto evalled = eval(el, eval_env);
@@ -72,47 +75,54 @@ void print(const string& out) {
 }
 
 void rep(const string& str) {
-    static EvalEnv eval_env = {
-        {"+", make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-             if (args.size() != 2) {
-                 throw std::runtime_error("+ requires 2 args");
-             }
-             auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
-             auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
-             return make_shared<MalInt>(a + b);
-         })},
-        {"-", make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-             if (args.size() != 2) {
-                 throw std::runtime_error("- requires 2 args");
-             }
-             auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
-             auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
-             return make_shared<MalInt>(a - b);
-         })},
-        {"*", make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-             if (args.size() != 2) {
-                 throw std::runtime_error("* requires 2 args");
-             }
-             auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
-             auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
-             return make_shared<MalInt>(a * b);
-         })},
-        {"/", make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-             if (args.size() != 2) {
-                 throw std::runtime_error("/ requires 2 args");
-             }
-             auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
-             auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
-             return make_shared<MalInt>(a / b);
-         })},
-    };
+    static EvalEnv root_env{};
+    root_env.set(
+        MalSymbol("+"),
+        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
+            if (args.size() != 2) {
+                throw std::runtime_error("+ requires 2 args");
+            }
+            auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
+            auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
+            return make_shared<MalInt>(a + b);
+        }));
+    root_env.set(
+        MalSymbol("-"),
+        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
+            if (args.size() != 2) {
+                throw std::runtime_error("- requires 2 args");
+            }
+            auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
+            auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
+            return make_shared<MalInt>(a - b);
+        }));
+    root_env.set(
+        MalSymbol("*"),
+        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
+            if (args.size() != 2) {
+                throw std::runtime_error("* requires 2 args");
+            }
+            auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
+            auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
+            return make_shared<MalInt>(a * b);
+        }));
+    root_env.set(
+        MalSymbol("/"),
+        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
+            if (args.size() != 2) {
+                throw std::runtime_error("/ requires 2 args");
+            }
+            auto a = dynamic_pointer_cast<MalInt>(args[0])->get();
+            auto b = dynamic_pointer_cast<MalInt>(args[1])->get();
+            return make_shared<MalInt>(a / b);
+        }));
 
     shared_ptr<MalType> out = nullptr;
 
     try {
         auto input = read_str(str);
         // std::cout << pr_str(input) << "\n";
-        out = eval(input, eval_env);
+        out = eval(input, root_env);
     } catch (std::runtime_error& e) {
         std::cout << e.what() << "\n";
     }
