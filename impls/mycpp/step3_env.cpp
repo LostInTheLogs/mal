@@ -14,6 +14,14 @@ using std::string, std::shared_ptr, std::dynamic_pointer_cast, std::make_shared;
 namespace {
 
 shared_ptr<MalType> eval(shared_ptr<MalType> ast, EvalEnv& eval_env) {
+    if (eval_env.contains(MalSymbol("DEBUG-EVAL"))) {
+        auto debug_eval = eval_env.get(MalSymbol("DEBUG-EVAL"));
+        if (dynamic_pointer_cast<MalNil>(debug_eval) == nullptr and
+            dynamic_pointer_cast<MalFalse>(debug_eval) == nullptr) {
+            std::cout << "EVAL: " << pr_str(ast, true) << "\n";
+        }
+    }
+
     if (auto symbol = dynamic_pointer_cast<MalSymbol>(ast)) {
         return eval_env.get(*symbol);
     }
@@ -28,6 +36,27 @@ shared_ptr<MalType> eval(shared_ptr<MalType> ast, EvalEnv& eval_env) {
             auto val = eval(list->at(2), eval_env);
             eval_env.set(key, val);
             return val;
+        }
+
+        if (first_symbol == "let*") {
+            auto def_env = EvalEnv(eval_env);
+
+            std::span<shared_ptr<MalType>> env_kv_pairs;
+            if (auto env_list = dynamic_pointer_cast<MalList>(list->at(1))) {
+                env_kv_pairs = *env_list;
+            } else if (auto env_vec =
+                           dynamic_pointer_cast<MalVec>(list->at(1))) {
+                env_kv_pairs = *env_vec;
+            } else {
+                throw std::runtime_error("incorrect 2nd arg to let*");
+            }
+
+            for (size_t i = 0; i < env_kv_pairs.size(); i += 2) {
+                auto key = *dynamic_pointer_cast<MalSymbol>(env_kv_pairs[i]);
+                auto val = eval(env_kv_pairs[i + 1], def_env);
+                def_env.set(key, val);
+            }
+            return eval(list->at(2), def_env);
         }
 
         std::vector<shared_ptr<MalType>> evaluated;

@@ -6,7 +6,17 @@
 #include <string>
 #include <vector>
 
-class MalType {};
+class MalType {
+  public:
+    MalType() = default;
+    MalType(MalType&&) = default;
+    MalType(const MalType&) = default;
+    MalType& operator=(MalType&&) = default;
+    MalType& operator=(const MalType&) = default;
+    virtual ~MalType() = default;
+
+  private:
+};
 
 class MalList : public MalType, public std::vector<std::shared_ptr<MalType>> {
   public:
