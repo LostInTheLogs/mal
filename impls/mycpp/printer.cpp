@@ -6,8 +6,9 @@
 #include <utility>
 
 #include "types.h"
+#include "utils.h"
 
-using std::string, std::shared_ptr, std::dynamic_pointer_cast;
+using std::string, std::shared_ptr;
 
 namespace {
 string pr_seq(std::span<shared_ptr<MalType>> seq, bool readably, string start,
@@ -25,7 +26,7 @@ string pr_seq(std::span<shared_ptr<MalType>> seq, bool readably, string start,
 }  // namespace
 
 std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
-    if (auto str = dynamic_pointer_cast<MalString>(mal_type)) {
+    if (auto str = dyn<MalString>(mal_type)) {
         auto ret_str = std::string(str->c_str());
         if (readably) {
             ret_str = std::regex_replace(ret_str, std::regex(R"(\\)"), "\\\\");
@@ -34,31 +35,31 @@ std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
         }
         return {"\"" + ret_str + "\""};
     }
-    if (auto keyword = dynamic_pointer_cast<MalKeyword>(mal_type)) {
+    if (auto keyword = dyn<MalKeyword>(mal_type)) {
         return {keyword->c_str()};
     }
-    if (auto symbol = dynamic_pointer_cast<MalSymbol>(mal_type)) {
+    if (auto symbol = dyn<MalSymbol>(mal_type)) {
         return {symbol->c_str()};
     }
-    if (auto integer = dynamic_pointer_cast<MalInt>(mal_type)) {
+    if (auto integer = dyn<MalInt>(mal_type)) {
         return std::to_string(integer->get());
     }
-    if (auto vec = dynamic_pointer_cast<MalVec>(mal_type)) {
+    if (auto vec = dyn<MalVec>(mal_type)) {
         return pr_seq(std::span(*vec), readably, "[", "]");
     }
-    if (auto list = dynamic_pointer_cast<MalList>(mal_type)) {
+    if (auto list = dyn<MalList>(mal_type)) {
         return pr_seq(std::span(*list), readably, "(", ")");
     }
-    if (auto map = dynamic_pointer_cast<MalHashMap>(mal_type)) {
+    if (auto map = dyn<MalHashMap>(mal_type)) {
         return pr_seq(std::span(*map), readably, "{", "}");
     }
-    if (dynamic_pointer_cast<MalNil>(mal_type) != nullptr) {
+    if (dyn<MalNil>(mal_type) != nullptr) {
         return {"nil"};
     }
-    if (dynamic_pointer_cast<MalTrue>(mal_type) != nullptr) {
+    if (dyn<MalTrue>(mal_type) != nullptr) {
         return {"true"};
     }
-    if (dynamic_pointer_cast<MalFalse>(mal_type) != nullptr) {
+    if (dyn<MalFalse>(mal_type) != nullptr) {
         return {"false"};
     }
 
