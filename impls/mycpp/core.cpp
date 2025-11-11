@@ -27,7 +27,7 @@ EvalEnv create_root_env() {
         {"*", make_int_func(std::multiplies<>())},
         {"/", make_int_func(std::divides<>())},
     };
-    static EvalEnv root_env(nullptr, list);
+    static EvalEnv root_env(list);
 
     return root_env;
 }

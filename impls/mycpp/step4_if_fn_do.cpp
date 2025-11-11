@@ -17,35 +17,97 @@ namespace {
 
 shared_ptr<MalType> eval(shared_ptr<MalType> ast, EvalEnv& eval_env);
 
-shared_ptr<MalType> eval_list(const shared_ptr<MalList>& list,
-                              EvalEnv& eval_env) {
-    const auto& first_symbol = *dyn<MalSymbol>(list->at(0));
+shared_ptr<MalType> eval_def(const shared_ptr<MalList>& list,
+                             EvalEnv& eval_env) {
+    auto key = *dyn<MalSymbol>(list->at(1));
+    auto val = eval(list->at(2), eval_env);
 
-    if (first_symbol == "def!") {
-        auto key = *dyn<MalSymbol>(list->at(1));
-        auto val = eval(list->at(2), eval_env);
-        eval_env.set(key, val);
-        return val;
+    eval_env.set(key, val);
+    return val;
+}
+
+shared_ptr<MalType> eval_let(const shared_ptr<MalList>& list,
+                             EvalEnv& eval_env) {
+    auto def_env = EvalEnv(eval_env);
+
+    std::span<shared_ptr<MalType>> env_kv_pairs;
+    if (auto env_list = dyn<MalList>(list->at(1))) {
+        env_kv_pairs = *env_list;
+    } else if (auto env_vec = dyn<MalVec>(list->at(1))) {
+        env_kv_pairs = *env_vec;
+    } else {
+        throw std::runtime_error("incorrect 2nd arg to let*");
     }
 
-    if (first_symbol == "let*") {
-        auto def_env = EvalEnv(eval_env);
+    for (size_t i = 0; i < env_kv_pairs.size(); i += 2) {
+        auto key = *dyn<MalSymbol>(env_kv_pairs[i]);
+        auto val = eval(env_kv_pairs[i + 1], def_env);
+        def_env.set(key, val);
+    }
+    return eval(list->at(2), def_env);
+}
 
-        std::span<shared_ptr<MalType>> env_kv_pairs;
-        if (auto env_list = dyn<MalList>(list->at(1))) {
-            env_kv_pairs = *env_list;
-        } else if (auto env_vec = dyn<MalVec>(list->at(1))) {
-            env_kv_pairs = *env_vec;
-        } else {
-            throw std::runtime_error("incorrect 2nd arg to let*");
-        }
+shared_ptr<MalType> eval_do(const shared_ptr<MalList>& list,
+                            EvalEnv& eval_env) {
+    std::vector<shared_ptr<MalType>> evaluated;
+    for (const auto& el : std::span(*list).subspan(1)) {
+        auto evalled = eval(el, eval_env);
+        evaluated.push_back(evalled);
+    }
+    return evaluated.at(evaluated.size() - 1);
+}
+shared_ptr<MalType> eval_if(const shared_ptr<MalList>& list,
+                            EvalEnv& eval_env) {
+    auto condition = eval(list->at(1), eval_env);
+    auto if_true = list->at(2);
+    auto if_false = list->at(3);
 
-        for (size_t i = 0; i < env_kv_pairs.size(); i += 2) {
-            auto key = *dyn<MalSymbol>(env_kv_pairs[i]);
-            auto val = eval(env_kv_pairs[i + 1], def_env);
-            def_env.set(key, val);
+    if (dyn<MalFalse>(condition) || dyn<MalNil>(condition)) {
+        if (list->size() < 4) {
+            return make_shared<MalNil>();
         }
-        return eval(list->at(2), def_env);
+        return eval(if_false, eval_env);
+    }
+    return eval(if_true, eval_env);
+}
+shared_ptr<MalType> eval_fn(const shared_ptr<MalList>& list,
+                            EvalEnv& eval_env) {
+    auto binds_list = dyn<MalList>(list->at(1));
+    auto body = list->at(2);
+
+    std::vector<MalSymbol> binds{};
+    for (const auto& bind : *binds_list) {
+        binds.push_back(*dyn<MalSymbol>(bind));
+    }
+
+    const auto fn = [eval_env_cpy = make_shared<EvalEnv>(eval_env), binds,
+                     body](MalFuncArgs args) {
+        auto env = EvalEnv({}, eval_env_cpy, std::span(binds), args);
+        return eval(body, env);
+    };
+    return make_shared<MalFunc>(binds.size(), fn);
+}
+
+shared_ptr<MalType> eval_list(const shared_ptr<MalList>& list,
+                              EvalEnv& eval_env) {
+    if (auto first_symbol_ptr = dyn<MalSymbol>(list->at(0))) {
+        const auto& first_symbol = *first_symbol_ptr;
+
+        if (first_symbol == "def!") {
+            return eval_def(list, eval_env);
+        }
+        if (first_symbol == "let*") {
+            return eval_let(list, eval_env);
+        }
+        if (first_symbol == "do") {
+            return eval_do(list, eval_env);
+        }
+        if (first_symbol == "if") {
+            return eval_if(list, eval_env);
+        }
+        if (first_symbol == "fn*") {
+            return eval_fn(list, eval_env);
+        }
     }
 
     std::vector<shared_ptr<MalType>> evaluated;
@@ -63,8 +125,9 @@ shared_ptr<MalType> eval_list(const shared_ptr<MalList>& list,
 }
 
 shared_ptr<MalType> eval(shared_ptr<MalType> ast, EvalEnv& eval_env) {
-    if (eval_env.contains(MalSymbol("DEBUG-EVAL"))) {
-        auto debug_eval = eval_env.get(MalSymbol("DEBUG-EVAL"));
+    if (auto debug_eval_symbol = MalSymbol("DEBUG-EVAL");
+        eval_env.contains(debug_eval_symbol)) {
+        auto debug_eval = eval_env.get(debug_eval_symbol);
         if (dyn<MalNil>(debug_eval) == nullptr and
             dyn<MalFalse>(debug_eval) == nullptr) {
             std::cout << "EVAL: " << pr_str(ast, true) << "\n";
