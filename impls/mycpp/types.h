@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <functional>
 #include <memory>
 #include <span>
@@ -72,10 +73,21 @@ class MalTrue : public MalType {};
 class MalFalse : public MalType {};
 
 using MalFuncArgs = std::span<std::shared_ptr<MalType>>;
-class MalFunc : public MalType,
-                public std::function<std::shared_ptr<MalType>(
-                    std::span<std::shared_ptr<MalType>>)> {
+using MalFuncSig = std::shared_ptr<MalType>(MalFuncArgs);
+class MalFunc : public MalType, public std::function<MalFuncSig> {
   public:
+    explicit MalFunc(const unsigned int arg_count,
+                     std::function<std::shared_ptr<MalType>(MalFuncArgs)> f)
+        : std::function<MalFuncSig>(
+              [arg_count, f = std::forward<decltype(f)>(f)](
+                  MalFuncArgs args) -> std::shared_ptr<MalType> {
+                  if (args.size() != arg_count) {
+                      throw std::runtime_error(std::format(
+                          "fn requires 2 args {} provided", args.size()));
+                  }
+                  return f(args);
+              }) {};
+
     using std::function<std::shared_ptr<MalType>(
         std::span<std::shared_ptr<MalType>>)>::function;
 };

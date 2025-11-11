@@ -10,8 +10,11 @@
 
 class EvalEnv {
   public:
-    explicit EvalEnv(std::shared_ptr<EvalEnv> outer = nullptr)
-        : outer(std::move(outer)) {}
+    explicit EvalEnv(std::shared_ptr<EvalEnv> outer = nullptr,
+                     std::initializer_list<
+                         std::pair<const std::string, std::shared_ptr<MalType>>>
+                         list = {})
+        : outer(std::move(outer)), data(list) {}
     void set(const MalSymbol& key, std::shared_ptr<MalType> value);
     std::shared_ptr<MalType> get(const MalSymbol& key) const;
     bool contains(const MalSymbol& key) const;
