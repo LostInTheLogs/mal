@@ -9,45 +9,37 @@ using std::string, std::make_shared, std::shared_ptr;
 EvalEnv create_root_env() {
     static EvalEnv root_env{};
 
-    root_env.set(
-        MalSymbol("+"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("+ requires 2 args");
+    const auto register_func = [](const char* name, unsigned int arg_count,
+                                  const auto&& f) {
+        const auto abcd = [name, arg_count, f = std::forward<decltype(f)>(f)](
+                              MalFuncArgs args) -> shared_ptr<MalType> {
+            if (args.size() != arg_count) {
+                throw std::runtime_error(string(name) + " requires 2 args");
             }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a + b);
-        }));
-    root_env.set(
-        MalSymbol("-"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("- requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a - b);
-        }));
-    root_env.set(
-        MalSymbol("*"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("* requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a * b);
-        }));
-    root_env.set(
-        MalSymbol("/"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("/ requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a / b);
-        }));
+            return f(args);
+        };
+        root_env.set(MalSymbol(name), std::make_shared<MalFunc>(abcd));
+    };
+
+    register_func("+", 2, [](MalFuncArgs args) -> shared_ptr<MalType> {
+        auto a = dyn<MalInt>(args[0])->get();
+        auto b = dyn<MalInt>(args[1])->get();
+        return make_shared<MalInt>(a + b);
+    });
+    register_func("-", 2, [](MalFuncArgs args) -> shared_ptr<MalType> {
+        auto a = dyn<MalInt>(args[0])->get();
+        auto b = dyn<MalInt>(args[1])->get();
+        return make_shared<MalInt>(a - b);
+    });
+    register_func("*", 2, [](MalFuncArgs args) -> shared_ptr<MalType> {
+        auto a = dyn<MalInt>(args[0])->get();
+        auto b = dyn<MalInt>(args[1])->get();
+        return make_shared<MalInt>(a * b);
+    });
+    register_func("/", 2, [](MalFuncArgs args) -> shared_ptr<MalType> {
+        auto a = dyn<MalInt>(args[0])->get();
+        auto b = dyn<MalInt>(args[1])->get();
+        return make_shared<MalInt>(a / b);
+    });
     return root_env;
 }
