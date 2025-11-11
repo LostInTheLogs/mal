@@ -33,7 +33,7 @@ std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
             ret_str = std::regex_replace(ret_str, std::regex(R"(")"), "\\\"");
             ret_str = std::regex_replace(ret_str, std::regex("\n"), "\\n");
         }
-        return {"\"" + ret_str + "\""};
+        return "\"" + ret_str + "\"";
     }
     if (auto keyword = dyn<MalKeyword>(mal_type)) {
         return {keyword->c_str()};
@@ -53,13 +53,13 @@ std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
     if (auto map = dyn<MalHashMap>(mal_type)) {
         return pr_seq(std::span(*map), readably, "{", "}");
     }
-    if (dyn<MalNil>(mal_type) != nullptr) {
+    if (dyn<MalNil>(mal_type)) {
         return {"nil"};
     }
-    if (dyn<MalTrue>(mal_type) != nullptr) {
+    if (dyn<MalTrue>(mal_type)) {
         return {"true"};
     }
-    if (dyn<MalFalse>(mal_type) != nullptr) {
+    if (dyn<MalFalse>(mal_type)) {
         return {"false"};
     }
 

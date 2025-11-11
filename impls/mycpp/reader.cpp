@@ -1,8 +1,6 @@
 #include "reader.h"
 
-#include <algorithm>
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <regex>
 #include <stdexcept>
@@ -51,8 +49,8 @@ shared_ptr<MalType> read_atom(Reader& reader) {
     try {
         int integer = std::stoi(token);
         return make_shared<MalInt>(integer);
-
-    } catch (...) {
+    } catch (std::invalid_argument&) {
+        (void)0;  // not an int
     }
 
     return make_shared<MalSymbol>(std::move(token));
@@ -69,7 +67,7 @@ vector<shared_ptr<MalType>> read_sequence(Reader& reader, const string& start,
         try {
             string next_str = reader.peek();
             if (next_str == end) {
-                reader.next();  // 'end'
+                reader.next();  // `end` string
                 return items;
             }
         } catch (std::out_of_range&) {

@@ -14,7 +14,7 @@ std::shared_ptr<MalType> EvalEnv::get(const MalSymbol& key) const {
         }
 
         const std::string& key_str = key;
-        throw std::runtime_error(std::format("symbl '{}' not found", key_str));
+        throw std::runtime_error(std::format("symbol '{}' not found", key_str));
     }
     auto ret = data.at(key);
     return ret;
