@@ -23,6 +23,8 @@ class MalList : public MalType, public std::vector<std::shared_ptr<MalType>> {
   public:
     explicit MalList(std::vector<std::shared_ptr<MalType>>&& items)
         : std::vector<std::shared_ptr<MalType>>(std::move(items)) {}
+
+    using std::vector<std::shared_ptr<MalType>>::vector;
 };
 
 class MalVec : public MalType, public std::vector<std::shared_ptr<MalType>> {
