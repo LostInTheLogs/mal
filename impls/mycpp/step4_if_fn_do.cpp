@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "core.h"
 #include "env.h"
 #include "printer.h"
 #include "reader.h"
@@ -107,47 +108,7 @@ void print(const string& out) {
 }
 
 void rep(const string& str) {
-    static EvalEnv root_env{};
-    root_env.set(
-        MalSymbol("+"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("+ requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a + b);
-        }));
-    root_env.set(
-        MalSymbol("-"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("- requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a - b);
-        }));
-    root_env.set(
-        MalSymbol("*"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("* requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a * b);
-        }));
-    root_env.set(
-        MalSymbol("/"),
-        make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
-            if (args.size() != 2) {
-                throw std::runtime_error("/ requires 2 args");
-            }
-            auto a = dyn<MalInt>(args[0])->get();
-            auto b = dyn<MalInt>(args[1])->get();
-            return make_shared<MalInt>(a / b);
-        }));
+    static EvalEnv root_env = create_root_env();
 
     shared_ptr<MalType> out = nullptr;
 
