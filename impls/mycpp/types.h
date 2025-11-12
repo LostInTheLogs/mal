@@ -100,3 +100,22 @@ class MalFunc : public MalType, public std::function<MalFuncSig> {
     using std::function<std::shared_ptr<MalType>(
         std::span<std::shared_ptr<MalType>>)>::function;
 };
+
+#ifndef NO_EVAL_ENV  // backwards compat
+class EvalEnv;
+
+struct MalFnFunc : public MalType {
+  public:
+    MalFnFunc(std::shared_ptr<MalType> ast, std::vector<MalSymbol> params,
+              std::shared_ptr<EvalEnv> env, MalFunc fn)
+        : ast(std::move(ast)),
+          params(std::move(params)),
+          env(std::move(env)),
+          fn(std::move(fn)) {}
+
+    std::shared_ptr<MalType> ast;
+    std::vector<MalSymbol> params;
+    std::shared_ptr<EvalEnv> env;
+    MalFunc fn;  // TODO: possibly not needed
+};
+#endif  // !NO_EVAL_ENV

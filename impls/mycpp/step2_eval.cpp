@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <vector>
 
+#define NO_EVAL_ENV
+
 #include "printer.h"
 #include "reader.h"
 #include "types.h"
