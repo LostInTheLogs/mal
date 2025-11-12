@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <span>
@@ -95,8 +96,8 @@ shared_ptr<MalType> eval_fn(const shared_ptr<MalList>& list,
             eval_env, std::span(binds), args);
         return eval(body, env);
     };
-    auto ret = make_shared<MalFunc>(binds.size(), fn);
-    return ret;
+    shared_ptr<MalType> ret;
+    return make_shared<MalFunc>(fn);
 }
 
 shared_ptr<MalType> eval_list(const shared_ptr<MalList>& list,
