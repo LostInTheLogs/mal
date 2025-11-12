@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <span>
@@ -15,10 +16,11 @@ using std::string, std::shared_ptr, std::make_shared;
 
 namespace {
 
-shared_ptr<MalType> eval(shared_ptr<MalType> ast, shared_ptr<EvalEnv> eval_env);
+shared_ptr<MalType> eval(shared_ptr<MalType> ast,
+                         const shared_ptr<EvalEnv>& eval_env);
 
 shared_ptr<MalType> eval_def(const shared_ptr<MalList>& list,
-                             shared_ptr<EvalEnv>& eval_env) {
+                             const shared_ptr<EvalEnv>& eval_env) {
     auto key = *dyn<MalSymbol>(list->at(1));
     auto val = eval(list->at(2), eval_env);
 
@@ -27,8 +29,8 @@ shared_ptr<MalType> eval_def(const shared_ptr<MalList>& list,
 }
 
 shared_ptr<MalType> eval_let(const shared_ptr<MalList>& list,
-                             shared_ptr<EvalEnv>& eval_env) {
-    eval_env = make_shared<EvalEnv>(*eval_env);
+                             const shared_ptr<EvalEnv>& eval_env) {
+    auto def_env = make_shared<EvalEnv>(*eval_env);
 
     std::span<shared_ptr<MalType>> env_kv_pairs;
     if (auto env_list = dyn<MalList>(list->at(1))) {
@@ -41,24 +43,23 @@ shared_ptr<MalType> eval_let(const shared_ptr<MalList>& list,
 
     for (size_t i = 0; i < env_kv_pairs.size(); i += 2) {
         auto key = *dyn<MalSymbol>(env_kv_pairs[i]);
-        auto val = eval(env_kv_pairs[i + 1], eval_env);
-        eval_env->set(key, val);
+        auto val = eval(env_kv_pairs[i + 1], def_env);
+        def_env->set(key, val);
     }
-
-    return list->at(2);
+    return eval(list->at(2), def_env);
 }
 
 shared_ptr<MalType> eval_do(const shared_ptr<MalList>& list,
-                            shared_ptr<EvalEnv>& eval_env) {
+                            const shared_ptr<EvalEnv>& eval_env) {
     std::vector<shared_ptr<MalType>> evaluated;
-    for (const auto& el : std::span(*list).subspan(1, list->size() - 2)) {
+    for (const auto& el : std::span(*list).subspan(1)) {
         auto evalled = eval(el, eval_env);
         evaluated.push_back(evalled);
     }
-    return list->at(list->size() - 1);
+    return evaluated.at(evaluated.size() - 1);
 }
 shared_ptr<MalType> eval_if(const shared_ptr<MalList>& list,
-                            shared_ptr<EvalEnv>& eval_env) {
+                            const shared_ptr<EvalEnv>& eval_env) {
     auto condition = eval(list->at(1), eval_env);
     auto if_true = list->at(2);
 
@@ -67,11 +68,10 @@ shared_ptr<MalType> eval_if(const shared_ptr<MalList>& list,
             return make_shared<MalNil>();
         }
         auto if_false = list->at(3);
-        return if_false;
+        return eval(if_false, eval_env);
     }
-    return if_true;
+    return eval(if_true, eval_env);
 }
-
 shared_ptr<MalType> eval_fn(const shared_ptr<MalList>& list,
                             const shared_ptr<EvalEnv>& eval_env) {
     std::span<shared_ptr<MalType>> binds_span;
@@ -96,44 +96,12 @@ shared_ptr<MalType> eval_fn(const shared_ptr<MalList>& list,
             eval_env, std::span(binds), args);
         return eval(body, env);
     };
-
-    return make_shared<MalFnFunc>(body, binds,
-                                  std::shared_ptr<EvalEnv>(eval_env), fn);
-    // return make_shared<MalFunc>(fn);
+    shared_ptr<MalType> ret;
+    return make_shared<MalFunc>(fn);
 }
 
-shared_ptr<MalType> eval_apply_list(shared_ptr<MalType>& ast,
-                                    const shared_ptr<MalList>& list,
-                                    shared_ptr<EvalEnv>& eval_env) {
-    std::vector<shared_ptr<MalType>> evaluated;
-    for (const auto& el : *list) {
-        auto evalled = eval(el, eval_env);
-        evaluated.push_back(evalled);
-    }
-
-    auto args = std::span(evaluated.begin() + 1, evaluated.end());
-
-    if (auto func = dyn<MalFunc>(evaluated[0])) {
-        return (*func)(args);
-    }
-
-    if (auto fn = dyn<MalFnFunc>(evaluated[0])) {
-        ast = fn->ast;
-
-        eval_env = make_shared<EvalEnv>(
-            std::initializer_list<
-                std::pair<const std::string, std::shared_ptr<MalType>>>{},
-            fn->env, fn->params, args);
-
-        return nullptr;
-    }
-
-    throw std::runtime_error("trying to call sth that is not a function");
-}
-
-shared_ptr<MalType> eval_list(shared_ptr<MalType>& ast,
-                              const shared_ptr<MalList>& list,
-                              shared_ptr<EvalEnv>& eval_env) {
+shared_ptr<MalType> eval_list(const shared_ptr<MalList>& list,
+                              const shared_ptr<EvalEnv>& eval_env) {
     if (auto first_symbol_ptr = dyn<MalSymbol>(list->at(0))) {
         const auto& first_symbol = *first_symbol_ptr;
 
@@ -141,73 +109,74 @@ shared_ptr<MalType> eval_list(shared_ptr<MalType>& ast,
             return eval_def(list, eval_env);
         }
         if (first_symbol == "let*") {
-            ast = eval_let(list, eval_env);
-            return nullptr;
+            return eval_let(list, eval_env);
         }
         if (first_symbol == "do") {
-            ast = eval_do(list, eval_env);
-            return nullptr;
+            return eval_do(list, eval_env);
         }
         if (first_symbol == "if") {
-            ast = eval_if(list, eval_env);
-            return nullptr;
+            return eval_if(list, eval_env);
         }
         if (first_symbol == "fn*") {
             return eval_fn(list, eval_env);
         }
     }
-    return eval_apply_list(ast, list, eval_env);
+
+    std::vector<shared_ptr<MalType>> evaluated;
+    for (const auto& el : *list) {
+        auto evalled = eval(el, eval_env);
+        evaluated.push_back(evalled);
+    }
+
+    auto fn = dyn<MalFunc>(evaluated[0]);
+    if (fn == nullptr) {
+        throw std::runtime_error("trying to call sth that is not a function");
+    }
+
+    return (*fn)(std::span(evaluated.begin() + 1, evaluated.end()));
 }
 
 shared_ptr<MalType> eval(shared_ptr<MalType> ast,
-                         shared_ptr<EvalEnv> eval_env) {
-    while (true) {
-        if (auto debug_eval_symbol = MalSymbol("DEBUG-EVAL");
-            eval_env->contains(debug_eval_symbol)) {
-            auto debug_eval = eval_env->get(debug_eval_symbol);
-            if (dyn<MalNil>(debug_eval) == nullptr and
-                dyn<MalFalse>(debug_eval) == nullptr) {
-                std::cout << "EVAL: " << pr_str(ast, true) << '\n'
-                          << std::flush;
-            }
+                         const shared_ptr<EvalEnv>& eval_env) {
+    if (auto debug_eval_symbol = MalSymbol("DEBUG-EVAL");
+        eval_env->contains(debug_eval_symbol)) {
+        auto debug_eval = eval_env->get(debug_eval_symbol);
+        if (dyn<MalNil>(debug_eval) == nullptr and
+            dyn<MalFalse>(debug_eval) == nullptr) {
+            std::cout << "EVAL: " << pr_str(ast, true) << "\n";
         }
-
-        if (auto symbol = dyn<MalSymbol>(ast)) {
-            return eval_env->get(*symbol);
-        }
-
-        if (auto list = dyn<MalList>(ast);
-            (list != nullptr) and list->size() > 0) {
-            if (auto ret = eval_list(ast, list, eval_env)) {
-                return ret;
-            }
-            continue;
-        }
-
-        if (auto list = dyn<MalVec>(ast);
-            (list != nullptr) and list->size() > 0) {
-            std::vector<shared_ptr<MalType>> evaluated;
-            for (const auto& el : *list) {
-                auto evalled = eval(el, eval_env);
-                evaluated.push_back(evalled);
-            }
-
-            return make_shared<MalVec>(std::move(evaluated));
-        }
-
-        if (auto list = dyn<MalHashMap>(ast);
-            (list != nullptr) and list->size() > 0) {
-            std::vector<shared_ptr<MalType>> evaluated;
-            for (const auto& el : *list) {
-                auto evalled = eval(el, eval_env);
-                evaluated.push_back(evalled);
-            }
-
-            return make_shared<MalHashMap>(std::move(evaluated));
-        }
-
-        return ast;
     }
+
+    if (auto symbol = dyn<MalSymbol>(ast)) {
+        return eval_env->get(*symbol);
+    }
+
+    if (auto list = dyn<MalList>(ast); (list != nullptr) and list->size() > 0) {
+        return eval_list(list, eval_env);
+    }
+
+    if (auto list = dyn<MalVec>(ast); (list != nullptr) and list->size() > 0) {
+        std::vector<shared_ptr<MalType>> evaluated;
+        for (const auto& el : *list) {
+            auto evalled = eval(el, eval_env);
+            evaluated.push_back(evalled);
+        }
+
+        return make_shared<MalVec>(std::move(evaluated));
+    }
+
+    if (auto list = dyn<MalHashMap>(ast);
+        (list != nullptr) and list->size() > 0) {
+        std::vector<shared_ptr<MalType>> evaluated;
+        for (const auto& el : *list) {
+            auto evalled = eval(el, eval_env);
+            evaluated.push_back(evalled);
+        }
+
+        return make_shared<MalHashMap>(std::move(evaluated));
+    }
+
+    return ast;
 }
 
 void print(const string& out) {
