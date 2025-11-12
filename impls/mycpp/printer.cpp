@@ -32,8 +32,9 @@ std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
             ret_str = std::regex_replace(ret_str, std::regex(R"(\\)"), "\\\\");
             ret_str = std::regex_replace(ret_str, std::regex(R"(")"), "\\\"");
             ret_str = std::regex_replace(ret_str, std::regex("\n"), "\\n");
+            return "\"" + ret_str + "\"";
         }
-        return "\"" + ret_str + "\"";
+        return ret_str;
     }
     if (auto keyword = dyn<MalKeyword>(mal_type)) {
         return {keyword->c_str()};

@@ -19,18 +19,25 @@ class MalType {
   private:
 };
 
-class MalList : public MalType, public std::vector<std::shared_ptr<MalType>> {
+class MalListLike : public MalType,
+                    public std::vector<std::shared_ptr<MalType>> {
   public:
-    explicit MalList(std::vector<std::shared_ptr<MalType>>&& items)
+    explicit MalListLike(std::vector<std::shared_ptr<MalType>>&& items)
         : std::vector<std::shared_ptr<MalType>>(std::move(items)) {}
-
-    using std::vector<std::shared_ptr<MalType>>::vector;
+    template <typename It>
+    MalListLike(It first, It last)
+        : std::vector<std::shared_ptr<MalType>>(first, last) {}
+    MalListLike() = default;
 };
 
-class MalVec : public MalType, public std::vector<std::shared_ptr<MalType>> {
+class MalVec : public MalListLike {
   public:
-    explicit MalVec(std::vector<std::shared_ptr<MalType>>&& items)
-        : std::vector<std::shared_ptr<MalType>>(std::move(items)) {}
+    using MalListLike::MalListLike;
+};
+
+class MalList : public MalListLike {
+  public:
+    using MalListLike::MalListLike;
 };
 
 class MalHashMap : public MalType,

@@ -183,7 +183,7 @@ void print(const string& out) {
     std::cout << out << '\n';
 }
 
-void rep(const string& str) {
+void rep(const string& str, bool quiet = false) {
     static auto root_env = make_shared<EvalEnv>(create_root_env());
 
     shared_ptr<MalType> out = nullptr;
@@ -196,11 +196,15 @@ void rep(const string& str) {
         std::cout << e.what() << "\n";
     }
 
-    print(pr_str(out));
+    if (!quiet) {
+        print(pr_str(out));
+    }
 }
 }  // namespace
 
 int main(int /*argc*/, char* /*argv*/[]) {
+    rep("(def! not (fn* (a) (if a false true)))", true);
+
     while (true) {
         std::cout << "user> ";
 

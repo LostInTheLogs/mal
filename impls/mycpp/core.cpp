@@ -11,6 +11,35 @@
 using std::string, std::make_shared, std::initializer_list, std::pair,
     std::shared_ptr;
 
+auto mal_eq(const shared_ptr<MalType>& a, const shared_ptr<MalType>& b)
+    -> bool {
+    auto& aref = *a;
+    auto& bref = *b;
+
+    auto list_a = dyn<MalListLike>(a);
+    auto list_b = dyn<MalListLike>(b);
+    if (list_a && list_b) {
+        if (list_a->size() != list_b->size()) {
+            return false;
+        }
+
+        for (size_t i = 0; i < list_a->size(); i++) {
+            if (!mal_eq(list_a->at(i), list_b->at(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (typeid(aref) != typeid(bref)) {
+        return false;
+    }
+
+    auto a_str = pr_str(a, false);
+    auto b_str = pr_str(b, false);
+    return a_str == b_str;
+};
+
 EvalEnv create_root_env() {
     constexpr auto make_mal_func = [](unsigned int arg_count,
                                       const std::function<MalFuncSig>& f) {
@@ -40,6 +69,13 @@ EvalEnv create_root_env() {
             });
     };
 
+    constexpr auto get_mal_bool = [](bool val) -> shared_ptr<MalType> {
+        if (val) {
+            return make_shared<MalTrue>();
+        }
+        return make_shared<MalFalse>();
+    };
+
     static initializer_list<pair<const string, shared_ptr<MalType>>> list = {
         {"+", make_int_func(std::plus<>())},
         {"-", make_int_func(std::minus<>())},
@@ -49,37 +85,27 @@ EvalEnv create_root_env() {
         {"<=", make_bool_func(std::less_equal<>())},
         {">", make_bool_func(std::greater<>())},
         {">=", make_bool_func(std::greater_equal<>())},
-        {"prn",
-         make_mal_func(  //
-             1,
-             [](MalFuncArgs args) {
-                 std::cout << pr_str(args[0], true) << '\n';
-                 return make_shared<MalNil>();
-             })},
         {"list", std::make_shared<MalFunc>([](MalFuncArgs args) {
              return make_shared<MalList>(args.begin(), args.end());
          })},
         {"list?",
          make_mal_func(  //
              1,
-             [](MalFuncArgs args) -> shared_ptr<MalType> {
-                 if (dyn<MalList>(args[0])) {
-                     return make_shared<MalTrue>();
-                 }
-                 return make_shared<MalFalse>();
+             [&](MalFuncArgs args) -> shared_ptr<MalType> {
+                 return get_mal_bool(dyn<MalList>(args[0]) != nullptr);
              })},
         {"empty?",
          make_mal_func(  //
              1,
-             [](MalFuncArgs args) -> shared_ptr<MalType> {
-                 auto list = dyn<MalList>(args[0]);
-                 if (!list) {
-                     throw std::runtime_error("not a list");
+             [&](MalFuncArgs args) -> shared_ptr<MalType> {
+                 if (auto list = dyn<MalList>(args[0])) {
+                     return get_mal_bool(list->empty());
                  }
-                 if (list->empty()) {
-                     return make_shared<MalTrue>();
+                 if (auto vec = dyn<MalVec>(args[0])) {
+                     return get_mal_bool(vec->empty());
                  }
-                 return make_shared<MalFalse>();
+
+                 throw std::runtime_error("not a list");
              })},
         {"count",
          make_mal_func(  //
@@ -88,21 +114,60 @@ EvalEnv create_root_env() {
                  size_t len = 0;
                  if (auto list = dyn<MalList>(args[0])) {
                      len = list->size();
+                 } else if (auto vec = dyn<MalVec>(args[0])) {
+                     len = vec->size();
                  }
                  return make_shared<MalInt>(len);
              })},
-
         {"=",
          make_mal_func(  //
              2,
-             [](MalFuncArgs args) -> shared_ptr<MalType> {
-                 auto a = pr_str(args[0], false);
-                 auto b = pr_str(args[1], false);
-                 if (a == b) {
-                     return make_shared<MalTrue>();
-                 }
-                 return make_shared<MalFalse>();
+             [&](MalFuncArgs args) -> shared_ptr<MalType> {
+                 return get_mal_bool(mal_eq(args[0], args[1]));
              })},
+        {"pr-str",
+         std::make_shared<MalFunc>([](MalFuncArgs args) -> shared_ptr<MalType> {
+             if (args.size() == 0) {
+                 return make_shared<MalString>("");
+             }
+             std::string ret;
+             for (size_t i = 0; i < args.size(); i++) {
+                 if (i != 0) {
+                     ret += " ";
+                 }
+                 ret += pr_str(args[i], true);
+             }
+             return make_shared<MalString>(ret.c_str());
+         })},
+        {"str", std::make_shared<MalFunc>([](MalFuncArgs args) {
+             std::string ret;
+             for (const auto& arg : args) {
+                 ret += pr_str(arg, false);
+             }
+             return make_shared<MalString>(ret.c_str());
+         })},
+        {"prn", std::make_shared<MalFunc>([](MalFuncArgs args) {
+             std::string ret;
+             for (size_t i = 0; i < args.size(); i++) {
+                 if (i != 0) {
+                     ret += " ";
+                 }
+                 ret += pr_str(args[i], true);
+             }
+             std::cout << ret << '\n';
+             return make_shared<MalNil>();
+         })},
+        {"println", std::make_shared<MalFunc>([](MalFuncArgs args) {
+             std::string ret;
+             for (size_t i = 0; i < args.size(); i++) {
+                 if (i != 0) {
+                     ret += " ";
+                 }
+                 ret += pr_str(args[i], false);
+             }
+             std::cout << ret << '\n';
+             return make_shared<MalNil>();
+         })},
     };
     static EvalEnv root_env(list);
 
