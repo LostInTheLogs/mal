@@ -15,8 +15,7 @@ using std::string, std::shared_ptr, std::make_shared;
 
 namespace {
 
-shared_ptr<MalType> eval(shared_ptr<MalType> ast,
-                         shared_ptr<EvalEnv>& eval_env);
+shared_ptr<MalType> eval(shared_ptr<MalType> ast, shared_ptr<EvalEnv> eval_env);
 
 shared_ptr<MalType> eval_def(const shared_ptr<MalList>& list,
                              shared_ptr<EvalEnv>& eval_env) {
@@ -98,7 +97,8 @@ shared_ptr<MalType> eval_fn(const shared_ptr<MalList>& list,
         return eval(body, env);
     };
 
-    return make_shared<MalFnFunc>(body, binds, eval_env, fn);
+    return make_shared<MalFnFunc>(body, binds,
+                                  std::shared_ptr<EvalEnv>(eval_env), fn);
     // return make_shared<MalFunc>(fn);
 }
 
@@ -114,23 +114,16 @@ shared_ptr<MalType> eval_apply_list(shared_ptr<MalType>& ast,
     auto args = std::span(evaluated.begin() + 1, evaluated.end());
 
     if (auto func = dyn<MalFunc>(evaluated[0])) {
-        // std::cout << "calling func with " << args.size() << " args: "
-        //           << pr_str(make_shared<MalList>(args.begin(), args.end()))
-        //           << std::endl;
         return (*func)(args);
     }
 
     if (auto fn = dyn<MalFnFunc>(evaluated[0])) {
-        std::cout << "calling fn with " << args.size() << " args: "
-                  << pr_str(make_shared<MalList>(args.begin(), args.end()))
-                  << std::endl;
         ast = fn->ast;
 
         eval_env = make_shared<EvalEnv>(
             std::initializer_list<
                 std::pair<const std::string, std::shared_ptr<MalType>>>{},
             fn->env, fn->params, args);
-        std::cout << "will eval: " << pr_str(ast) << std::endl;
 
         return nullptr;
     }
@@ -167,7 +160,7 @@ shared_ptr<MalType> eval_list(shared_ptr<MalType>& ast,
 }
 
 shared_ptr<MalType> eval(shared_ptr<MalType> ast,
-                         shared_ptr<EvalEnv>& eval_env) {
+                         shared_ptr<EvalEnv> eval_env) {
     while (true) {
         if (auto debug_eval_symbol = MalSymbol("DEBUG-EVAL");
             eval_env->contains(debug_eval_symbol)) {
