@@ -234,7 +234,7 @@ void rep(const string& str, bool quiet = false) {
 }
 }  // namespace
 
-int main(int /*argc*/, char* /*argv*/[]) {
+int main(int argc, char* argv[]) {
     g_root_env = make_shared<EvalEnv>(create_root_env());
 
     g_root_env->set(MalSymbol("eval"),
@@ -246,6 +246,24 @@ int main(int /*argc*/, char* /*argv*/[]) {
     rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) "
         "\"\nnil)\")))))",
         true);
+    rep("(def! run-file (fn* (f) (eval (read-string (slurp f) ))))", true);
+
+    std::span args(argv, argc);
+
+    auto mal_args = make_shared<MalList>();
+    if (args.size() > 2) {
+        for (auto* s : args.subspan(2)) {
+            auto arg = read_str(s);
+            auto evaluated = eval(arg, g_root_env);
+            mal_args->push_back(evaluated);
+        }
+    }
+    g_root_env->set(MalSymbol("*ARGV*"), mal_args);
+
+    if (args.size() > 1) {
+        rep(std::format("(run-file \"{}\")", args[1]));
+        return 0;
+    }
 
     while (true) {
         std::cout << "user> ";
