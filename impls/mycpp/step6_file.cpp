@@ -28,7 +28,10 @@ shared_ptr<MalType> eval_def(const shared_ptr<MalList>& list,
 
 shared_ptr<MalType> eval_let(const shared_ptr<MalList>& list,
                              shared_ptr<EvalEnv>& eval_env) {
-    eval_env = make_shared<EvalEnv>(*eval_env);
+    eval_env = make_shared<EvalEnv>(
+        std::initializer_list<
+            std::pair<const std::string, std::shared_ptr<MalType>>>{},
+        eval_env);
 
     std::span<shared_ptr<MalType>> env_kv_pairs;
     if (auto env_list = dyn<MalList>(list->at(1))) {
@@ -243,8 +246,7 @@ int main(int argc, char* argv[]) {
                     }));
 
     rep("(def! not (fn* (a) (if a false true)))", true);
-    rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) "
-        "\"\nnil)\")))))",
+    rep(R"_((def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)"))))))_",
         true);
     rep("(def! run-file (fn* (f) (eval (read-string (slurp f) ))))", true);
 
