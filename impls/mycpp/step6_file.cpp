@@ -102,7 +102,6 @@ shared_ptr<MalType> eval_fn(const shared_ptr<MalList>& list,
 
     return make_shared<MalFnFunc>(body, binds,
                                   std::shared_ptr<EvalEnv>(eval_env), fn);
-    // return make_shared<MalFunc>(fn);
 }
 
 shared_ptr<MalType> eval_apply_list(shared_ptr<MalType>& ast,
