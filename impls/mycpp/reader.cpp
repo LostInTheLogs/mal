@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "types.h"
+#include "utils.h"
 
 using std::string, std::vector, std::shared_ptr, std::make_shared;
 
@@ -75,8 +76,9 @@ vector<shared_ptr<MalType>> read_sequence(Reader& reader, const string& start,
         }
 
         auto form = read_form(reader);
-        assert(form);
-        items.push_back(form);
+        if (!dyn<MalEmpty>(form)) {
+            items.push_back(form);
+        }
     }
 }
 

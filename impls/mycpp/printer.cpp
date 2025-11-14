@@ -54,6 +54,9 @@ std::string pr_str(const shared_ptr<MalType>& mal_type, bool readably) {
     if (auto map = dyn<MalHashMap>(mal_type)) {
         return pr_seq(std::span(*map), readably, "{", "}");
     }
+    if (auto atom = dyn<MalAtom>(mal_type)) {
+        return std::format("(atom {})", pr_str(atom->value, readably));
+    }
     if (dyn<MalFunc>(mal_type) || dyn<MalFnFunc>(mal_type)) {
         return {"#<function>"};
     }

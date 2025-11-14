@@ -92,8 +92,9 @@ class MalFunc : public MalType, public std::function<MalFuncSig> {
               [arg_count, f = std::forward<decltype(f)>(f)](
                   MalFuncArgs args) -> std::shared_ptr<MalType> {
                   if (args.size() != arg_count) {
-                      throw std::runtime_error(std::format(
-                          "fn requires 2 args {} provided", args.size()));
+                      throw std::runtime_error(
+                          std::format("fn requires {} args {} provided",
+                                      arg_count, args.size()));
                   }
                   return f(args);
               }) {};
@@ -105,7 +106,7 @@ class MalFunc : public MalType, public std::function<MalFuncSig> {
 #ifndef NO_EVAL_ENV  // backwards compat
 class EvalEnv;
 
-struct MalFnFunc : public MalType {
+class MalFnFunc : public MalType {
   public:
     MalFnFunc(std::shared_ptr<MalType> ast, std::vector<MalSymbol> params,
               std::shared_ptr<EvalEnv> env, MalFunc fn)
@@ -120,3 +121,11 @@ struct MalFnFunc : public MalType {
     MalFunc fn;  // TODO: possibly not needed
 };
 #endif  // !NO_EVAL_ENV
+
+class MalAtom : public MalType {
+  public:
+    explicit MalAtom(std::shared_ptr<MalType> value)
+        : value(std::move(value)) {};
+
+    std::shared_ptr<MalType> value;
+};

@@ -196,6 +196,58 @@ EvalEnv create_root_env() {
                  sstr << file.rdbuf();
                  return make_shared<MalString>(sstr.str());
              })},
+        {"atom",
+         make_mal_func(  //
+             1,
+             [](MalFuncArgs args) { return make_shared<MalAtom>(args[0]); })},
+        {"atom?",
+         make_mal_func(  //
+             1,
+             [&get_mal_bool](MalFuncArgs args) {
+                 return get_mal_bool(dyn<MalAtom>(args[0]) != nullptr);
+             })},
+        {"deref",
+         make_mal_func(  //
+             1, [](MalFuncArgs args) { return dyn<MalAtom>(args[0])->value; })},
+        {"reset!",
+         make_mal_func(  //
+             2,
+             [](MalFuncArgs args) {
+                 auto atom = dyn<MalAtom>(args[0]);
+                 if (!atom) {
+                     throw std::runtime_error("not an atom");
+                 }
+                 atom->value = args[1];
+                 return args[1];
+             })},
+        {"swap!", make_shared<MalFunc>([](MalFuncArgs args) {
+             auto atom = dyn<MalAtom>(args[0]);
+             if (!atom) {
+                 throw std::runtime_error("not an atom");
+             }
+
+             MalFunc* fn = dyn<MalFunc>(args[1]).get();
+
+             std::vector<shared_ptr<MalType>> new_args{atom->value};
+             if (args.size() > 2) {
+                 for (const auto& arg : std::span(args).subspan(2)) {
+                     new_args.push_back(arg);
+                 }
+             }
+
+             if (!fn) {
+                 auto fn_func = dyn<MalFnFunc>(args[1]);
+                 if (!fn_func) {
+                     throw std::runtime_error("not an function");
+                 }
+                 fn = &fn_func->fn;
+             }
+
+             auto applied = (*fn)(std::span(new_args));
+
+             atom->value = applied;
+             return applied;
+         })},
     };
     static EvalEnv root_env(list);
 
