@@ -77,6 +77,7 @@ class MalInt : public MalType {
     int integer;
 };
 
+class MalEmpty : public MalType {};
 class MalNil : public MalType {};
 class MalTrue : public MalType {};
 class MalFalse : public MalType {};

@@ -214,15 +214,16 @@ void print(const string& out) {
     std::cout << out << '\n';
 }
 
-void rep(const string& str, bool quiet = false) {
-    static auto root_env = make_shared<EvalEnv>(create_root_env());
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+shared_ptr<EvalEnv> g_root_env;
 
+void rep(const string& str, bool quiet = false) {
     shared_ptr<MalType> out = nullptr;
 
     try {
         auto input = read_str(str);
         // std::cout << pr_str(input) << "\n";
-        out = eval(input, root_env);
+        out = eval(input, g_root_env);
     } catch (std::runtime_error& e) {
         std::cout << e.what() << "\n";
     }
@@ -234,7 +235,17 @@ void rep(const string& str, bool quiet = false) {
 }  // namespace
 
 int main(int /*argc*/, char* /*argv*/[]) {
+    g_root_env = make_shared<EvalEnv>(create_root_env());
+
+    g_root_env->set(MalSymbol("eval"),
+                    make_shared<MalFunc>([](MalFuncArgs args) {
+                        return eval(args[0], g_root_env);
+                    }));
+
     rep("(def! not (fn* (a) (if a false true)))", true);
+    rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) "
+        "\"\nnil)\")))))",
+        true);
 
     while (true) {
         std::cout << "user> ";

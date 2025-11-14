@@ -43,7 +43,7 @@ shared_ptr<MalType> read_atom(Reader& reader) {
     }
 
     if (token.at(0) == ';') {
-        return nullptr;
+        return make_shared<MalEmpty>();
     }
 
     try {

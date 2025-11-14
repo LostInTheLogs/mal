@@ -1,15 +1,21 @@
 #include "core.h"
 
+#include <fstream>
 #include <iostream>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
 
 #include "env.h"
 #include "printer.h"
+#include "reader.h"
 #include "types.h"
 #include "utils.h"
 
 using std::string, std::make_shared, std::initializer_list, std::pair,
     std::shared_ptr;
+
+namespace {
 
 auto mal_eq(const shared_ptr<MalType>& a, const shared_ptr<MalType>& b)
     -> bool {
@@ -39,6 +45,8 @@ auto mal_eq(const shared_ptr<MalType>& a, const shared_ptr<MalType>& b)
     auto b_str = pr_str(b, false);
     return a_str == b_str;
 };
+
+}  // namespace
 
 EvalEnv create_root_env() {
     constexpr auto make_mal_func = [](unsigned int arg_count,
@@ -168,6 +176,26 @@ EvalEnv create_root_env() {
              std::cout << ret << '\n';
              return make_shared<MalNil>();
          })},
+        {"read-string",
+         make_mal_func(  //
+             1,
+             [](MalFuncArgs args) {
+                 auto str = dyn<MalString>(args[0]);
+                 return read_str(*str);
+             })},
+        {"slurp",
+         make_mal_func(  //
+             1,
+             [](MalFuncArgs args) {
+                 auto path = dyn<MalString>(args[0]);
+                 std::ifstream file(*path);
+                 if (!file) {
+                     throw std::runtime_error("error reading file");
+                 }
+                 std::ostringstream sstr;
+                 sstr << file.rdbuf();
+                 return make_shared<MalString>(sstr.str());
+             })},
     };
     static EvalEnv root_env(list);
 
