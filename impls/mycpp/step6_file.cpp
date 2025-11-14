@@ -253,9 +253,14 @@ int main(int argc, char* argv[]) {
     auto mal_args = make_shared<MalList>();
     if (args.size() > 2) {
         for (auto* s : args.subspan(2)) {
-            auto arg = read_str(s);
-            auto evaluated = eval(arg, g_root_env);
-            mal_args->push_back(evaluated);
+            try {
+                auto arg = read_str(s);
+                auto evaluated = eval(arg, g_root_env);
+                mal_args->push_back(evaluated);
+            } catch (std::runtime_error& e) {
+                std::cout << e.what() << "\n";
+                return 1;
+            }
         }
     }
     g_root_env->set(MalSymbol("*ARGV*"), mal_args);
